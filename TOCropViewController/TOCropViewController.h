@@ -148,6 +148,8 @@ typedef NS_ENUM(NSInteger, TOCropViewControllerToolbarPosition) {
  */
 @property (nonatomic, assign) TOCropViewControllerAspectRatioPreset aspectRatioPreset;
 
+@property (nonatomic) NSArray<NSNumber*> * _Nonnull aspectRatioPresets;
+
 /**
  A CGSize value representing a custom aspect ratio, not listed in the presets.
  E.g. A ratio of 4:3 would be represented as (CGSize){4.0f, 3.0f}

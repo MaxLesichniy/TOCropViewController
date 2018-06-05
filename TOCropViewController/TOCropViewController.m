@@ -86,6 +86,15 @@ CGFloat titleLabelHeight;
         _rotateClockwiseButtonHidden = YES;
 		
 		titleLabelHeight = 0.0f;
+        
+        _aspectRatioPresets = @[@(TOCropViewControllerAspectRatioPresetOriginal),
+                                    @(TOCropViewControllerAspectRatioPresetSquare),
+                                    @(TOCropViewControllerAspectRatioPreset3x2),
+                                    @(TOCropViewControllerAspectRatioPreset5x3),
+                                    @(TOCropViewControllerAspectRatioPreset4x3),
+                                    @(TOCropViewControllerAspectRatioPreset5x4),
+                                    @(TOCropViewControllerAspectRatioPreset7x5),
+                                    @(TOCropViewControllerAspectRatioPreset16x9)];
     }
 	
     return self;
@@ -434,14 +443,8 @@ CGFloat titleLabelHeight;
 }
 
 #pragma mark - Aspect Ratio Handling -
-- (void)showAspectRatioDialog
-{
-    if (self.cropView.aspectRatioLockEnabled) {
-        self.cropView.aspectRatioLockEnabled = NO;
-        self.toolbar.clampButtonGlowing = NO;
-        return;
-    }
-    
+
+- (NSArray*) titlesForAspectRatioButtons {
     //Depending on the shape of the image, work out if horizontal, or vertical options are required
     BOOL verticalCropBox = self.cropView.cropBoxAspectRatioIsPortrait;
     
@@ -456,13 +459,12 @@ CGFloat titleLabelHeight;
         resourceBundle = classBundle;
     }
     
-    //Prepare the localized options
-    NSString *cancelButtonTitle = NSLocalizedStringFromTableInBundle(@"Cancel", @"TOCropViewControllerLocalizable", resourceBundle, nil);
     NSString *originalButtonTitle = NSLocalizedStringFromTableInBundle(@"Original", @"TOCropViewControllerLocalizable", resourceBundle, nil);
     NSString *squareButtonTitle = NSLocalizedStringFromTableInBundle(@"Square", @"TOCropViewControllerLocalizable", resourceBundle, nil);
-    
+
     //Prepare the list that will be fed to the alert view/controller
     NSMutableArray *items = [NSMutableArray array];
+    
     [items addObject:originalButtonTitle];
     [items addObject:squareButtonTitle];
     if (verticalCropBox) {
@@ -470,6 +472,41 @@ CGFloat titleLabelHeight;
     }
     else {
         [items addObjectsFromArray:@[@"3:2", @"5:3", @"4:3", @"5:4", @"7:5", @"16:9"]];
+    }
+    
+    return items;
+}
+
+- (void)showAspectRatioDialog
+{
+//    if (self.cropView.aspectRatioLockEnabled) {
+//        self.cropView.aspectRatioLockEnabled = NO;
+//        self.toolbar.clampButtonGlowing = NO;
+//        return;
+//    }
+//    
+
+    
+    // In CocoaPods, strings are stored in a separate bundle from the main one
+    NSBundle *resourceBundle = nil;
+    NSBundle *classBundle = [NSBundle bundleForClass:[self class]];
+    NSURL *resourceBundleURL = [classBundle URLForResource:@"TOCropViewControllerBundle" withExtension:@"bundle"];
+    if (resourceBundleURL) {
+        resourceBundle = [[NSBundle alloc] initWithURL:resourceBundleURL];
+    }
+    else {
+        resourceBundle = classBundle;
+    }
+    
+    //Prepare the localized options
+    NSString *cancelButtonTitle = NSLocalizedStringFromTableInBundle(@"Cancel", @"TOCropViewControllerLocalizable", resourceBundle, nil);
+    
+    NSArray *titles = [self titlesForAspectRatioButtons];
+    
+    NSMutableArray *items = [NSMutableArray array];
+    
+    for (NSNumber *aspectRatioIndex in self.aspectRatioPresets) {
+        [items addObject:titles[aspectRatioIndex.intValue]];
     }
     
     //Present via a UIAlertController if >= iOS 8
@@ -481,7 +518,8 @@ CGFloat titleLabelHeight;
         NSInteger i = 0;
         for (NSString *item in items) {
             UIAlertAction *action = [UIAlertAction actionWithTitle:item style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-                [self setAspectRatioPreset:(TOCropViewControllerAspectRatioPreset)i animated:YES];
+                NSNumber *selectedAspectRation = self.aspectRatioPresets[i];
+                [self setAspectRatioPreset:(TOCropViewControllerAspectRatioPreset)selectedAspectRation.intValue animated:YES];
                 self.aspectRatioLockEnabled = YES;
             }];
             [alertController addAction:action];
@@ -524,7 +562,8 @@ CGFloat titleLabelHeight;
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 - (void)actionSheet:(UIActionSheet *)actionSheet didDismissWithButtonIndex:(NSInteger)buttonIndex
 {
-    [self setAspectRatioPreset:(TOCropViewControllerAspectRatioPreset)buttonIndex animated:YES];
+    NSNumber *selectedAspectRation = self.aspectRatioPresets[buttonIndex];
+    [self setAspectRatioPreset:(TOCropViewControllerAspectRatioPreset)selectedAspectRation.intValue animated:YES];
     self.aspectRatioLockEnabled = YES;
 }
 #pragma clang diagnostic pop
@@ -567,8 +606,8 @@ CGFloat titleLabelHeight;
     
     //If the image is a portrait shape, flip the aspect ratio to match
     if (aspectRatioPreset != TOCropViewControllerAspectRatioPresetCustom &&
-        self.cropView.cropBoxAspectRatioIsPortrait &&
-        !self.aspectRatioLockEnabled)
+        self.cropView.cropBoxAspectRatioIsPortrait) //&&
+        //!self.aspectRatioLockEnabled)
     {
         CGFloat width = aspectRatio.width;
         aspectRatio.width = aspectRatio.height;
@@ -581,11 +620,17 @@ CGFloat titleLabelHeight;
 - (void)rotateCropViewClockwise
 {
     [self.cropView rotateImageNinetyDegreesAnimated:YES clockwise:YES];
+//    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+//        [self setAspectRatioPreset:self.aspectRatioPreset animated:YES];
+//    });
 }
 
 - (void)rotateCropViewCounterclockwise
 {
     [self.cropView rotateImageNinetyDegreesAnimated:YES clockwise:NO];
+//    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+//        [self setAspectRatioPreset:self.aspectRatioPreset animated:YES];
+//    });
 }
 
 #pragma mark - Crop View Delegates -
